@@ -1,9 +1,16 @@
 #! /bin/bash
 
+# Yad
+fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
+fkey=$RANDOM
+
 # Paths
 game_default_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
 game_custom_path=''
 selected_mod_path=''
+
+# Folders
+mods_folder_path='./Mods'
 
 # Icons
 app_icon='./Icons/icon_app.png'
@@ -12,29 +19,73 @@ folder_icon='./Icons/icon_folder.png'
 install_icon='./Icons/icon_install.png'
 
 # Rest
-install_button_command='yad --file --multiple'
-manage_button_command=''
+manage_button_command='yad --file --directory --on-top'
+path_button_command='yad --file --directory --on-top'
 
-fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
-fkey=$RANDOM
+# Buttons
 
-exec 3<> $fpipe
+InstallButtonCommand()
+{
+    selected_mod_path="";
+    selected_mod_path=$(yad --file --file-filter "Compressed files | *.rar *.zip *.7z" --on-top);
+    if [ -f "$selected_mod_path" ]; then
+        yad --text-align="center" --fixed --center --text="$selected_mod_path";
+    fi
+}
+
+ManageButtonCommand()
+{
+    yad --text-align="center" --fixed --center --text="Manage";
+}
+
+PathButtonCommand()
+{
+    yad --text-align="center" --fixed --center --text="Path";
+}
+
+export -f InstallButtonCommand
+export -f ManageButtonCommand
+export -f PathButtonCommand
+
+# Checks
+
+CheckForDependencies()
+{
+    command -v yad > /dev/null 2>&1 || { >&2 echo "Error, YAD is required for this application to run"; exit 1; }
+}
+
+CreateFolders()
+{
+    if ! [ -d "$mods_folder_path" ]; then mkdir "$mods_folder_path"; fi
+}
 
 # Main
 
-yad --paned --key="$fkey" --fixed --center \
-    --title="MHW Mod Manager" --window-icon="$app_icon" --form \
-    \
-    --field="Game install path:dir" "~/" \
-    \
-    --buttons-layout="center" --button="Install Mod!$install_icon!:$install_button_command" --button="Manage mods!$folder_icon!:$manage_button_command" \
-    <&3 &
-exec 3>&-
+ExecuteAppWindow()
+{
+    exec 3<> $fpipe
 
-# Cleanup
-trap "rm -f $fpipe" EXIT
+    yad --paned --key="$fkey" --fixed --center \
+        --title="MHW Mod Manager" --window-icon="$app_icon" --form \
+        \
+        --field="Game install path:" "$game_default_path" \
+        --field="Change Path!$install_icon!:btn" "bash -c PathButtonCommand" \
+        \
+        --buttons-layout="center" \
+        --button="Install Mod!$install_icon!":"bash -c InstallButtonCommand" \
+        --button="Manage mods!$folder_icon!":"bash -c ManageButtonCommand" \
+        <&3 &
+    exec 3>&-
 
-# List
+    # Cleanup
+    trap "rm -f $fpipe" EXIT
 
-# yad --plug="$fkey" --tabnum=4 --list --dclick-action="xdg-open '%s'" \
-#     --text "Installed mods:" --column="Name" --column="Size:sz" --column="Date" --expand-column=1
+    # List
+
+    # yad --plug="$fkey" --tabnum=4 --list --dclick-action="xdg-open '%s'" \
+    #     --text "Installed mods:" --column="Name" --column="Size:sz" --column="Date" --expand-column=1
+}
+
+CheckForDependencies
+CreateFolders
+ExecuteAppWindow
