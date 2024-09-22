@@ -1,0 +1,40 @@
+#! /bin/bash
+
+# Paths
+game_default_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
+game_custom_path=''
+selected_mod_path=''
+
+# Icons
+app_icon='./Icons/icon_app.png'
+file_icon='./Icons/icon_file.png'
+folder_icon='./Icons/icon_folder.png'
+install_icon='./Icons/icon_install.png'
+
+# Rest
+install_button_command='yad --file --multiple'
+manage_button_command=''
+
+fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
+fkey=$RANDOM
+
+exec 3<> $fpipe
+
+# Main
+
+yad --paned --key="$fkey" --fixed --center \
+    --title="MHW Mod Manager" --window-icon="$app_icon" --form \
+    \
+    --field="Game install path:dir" "~/" \
+    \
+    --buttons-layout="center" --button="Install Mod!$install_icon!:$install_button_command" --button="Manage mods!$folder_icon!:$manage_button_command" \
+    <&3 &
+exec 3>&-
+
+# Cleanup
+trap "rm -f $fpipe" EXIT
+
+# List
+
+# yad --plug="$fkey" --tabnum=4 --list --dclick-action="xdg-open '%s'" \
+#     --text "Installed mods:" --column="Name" --column="Size:sz" --column="Date" --expand-column=1
