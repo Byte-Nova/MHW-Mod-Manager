@@ -5,7 +5,7 @@ fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
 fkey=$RANDOM
 
 # Paths
-export seleted_game_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
+export selected_game_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
 export selected_mod_path=''
 export selected_mod_name=''
 
@@ -40,7 +40,7 @@ export -f InstallButtonCommand
 
 PathButtonCommand()
 {
-    seleted_game_path=$(yad --file --directory --on-top --title="Select game path");
+    selected_game_path=$(yad --file --directory --on-top --title="Select game path");
     SaveNewGamePath;
     RestartApp;
 }
@@ -97,7 +97,7 @@ export -f WriteManifest
 InstallMod()
 {
     # Copy files from temp into actual folder
-    cp -r "$temp_folder_path"/* "$seleted_game_path" > /dev/null;
+    cp -r "$temp_folder_path"/* "$selected_game_path" > /dev/null;
 
     # Clean the temp folder for next installations
     rm -rf "$temp_folder_path"/* > /dev/null;
@@ -180,7 +180,7 @@ export -f CreateFolders
 LoadConfigs()
 {
     cd $config_folder_path;
-    if [ -f "$config_folder_path/GamePath.txt" ]; then seleted_game_path=$(cat "$config_folder_path/GamePath.txt")
+    if [ -f "$config_folder_path/GamePath.txt" ]; then selected_game_path=$(cat "$config_folder_path/GamePath.txt")
     else SaveNewGamePath; fi
     cd $main_folder_path;
 }
@@ -190,7 +190,7 @@ SaveNewGamePath()
 {
     rm -rf "$config_folder_path/GamePath.txt";
     touch "$config_folder_path/GamePath.txt";
-    echo $seleted_game_path >> $config_folder_path/GamePath.txt; 
+    echo $selected_game_path >> $config_folder_path/GamePath.txt; 
 }
 export -f SaveNewGamePath
 
@@ -214,7 +214,7 @@ ExecuteAppWindow()
     exec 3<> $fpipe
 
     yad --plug="$fkey" --tabnum=1 --date-format="%Y-%m-%d" --form \
-        --field="Game install path:" "$seleted_game_path" \
+        --field="Game install path:" "$selected_game_path" \
         --field="Change Path!$install_icon!:btn" "bash -c PathButtonCommand" &
 
     yad --plug="$fkey" --tabnum=2 --list --no-markup \
