@@ -1,1 +1,1 @@
-~/.local/share/Steam/steamapps/common/Monster Hunter World
+/home/nova/Code/MHW-Mod-Manager/Source/Deploy

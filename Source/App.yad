@@ -110,7 +110,7 @@ export -f InstallMod
 GetInstalledModsToList()
 {
     cd $mods_folder_path
-    eval ls $mods_folder_path >> "$fpipe"
+    eval ls -1 $mods_folder_path | sed -e 's/\.manifest$//' >> "$fpipe"
     cd $main_folder_path;
 }
 export -f GetInstalledModsToList
