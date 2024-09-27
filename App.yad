@@ -5,7 +5,7 @@ export fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
 export fkey=$RANDOM
 
 # Paths
-export selected_game_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
+export selected_game_path=''
 export selected_mod_path=''
 export selected_mod_name=''
 
@@ -189,7 +189,7 @@ UnrarFile()
         exit 1; 
     }
 
-    cd $temp_folder_path &&unrar x -o+ "$selected_mod_path" > /dev/null $main_folder_path;
+    cd $temp_folder_path && unrar x -o+ "$selected_mod_path" > /dev/null && cd $main_folder_path;
 }
 export -f UnrarFile
 
