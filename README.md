@@ -1,8 +1,8 @@
 # MHW-Mod-Manager
-## A Linux solution for Monster Hunter World modding
+## A ``Linux`` solution for Monster Hunter World modding
 
 **What is it?**
-- A very simple and intuitive GUI application that allows Linux users to manage mods for ``Monster Hunter World``.
+- A very simple and intuitive GUI application that allows ``Linux`` users to manage mods for ``Monster Hunter World``.
 
 **Things to know before using it?**
 - This app relies on ``yad`` to run correctly, since it's the extension used for the GUI to be displayed. Most of the times it can just be installed from the console using most of the package managers available per distro.
