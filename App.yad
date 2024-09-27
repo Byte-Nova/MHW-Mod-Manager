@@ -13,7 +13,7 @@ export selected_mod_name=''
 export main_folder_path=''
 export mods_folder_path='./Mods'
 export temp_folder_path='./Temp'
-export config_folder_path='./Config'
+export configs_folder_path='./Configs'
 
 # Icons
 export app_icon='./Icons/icon_app.png'
@@ -72,9 +72,7 @@ export -f ShowInstallConfirmation
 
 ShowRemoveConfirmation()
 {
-    cd $temp_folder_path;
-    selected_mod_name=`cat "tmp"`;
-    cd $main_folder_path;
+    selected_mod_name=`cat "$temp_folder_path/tmp"`;
 
     yn_title="Confirmation";
     yn_description="Are you sure you want to remove '$selected_mod_name'?";
@@ -138,44 +136,31 @@ WriteManifest()
 }
 export -f WriteManifest
 
-GetInstalledModsToList()
-{
-    cd $mods_folder_path
-    eval ls -1 $mods_folder_path | sed -e 's/\.manifest$//' >> "$fpipe"
-    cd $main_folder_path;
-}
+GetInstalledModsToList() { eval ls -1 $mods_folder_path | sed -e 's/\.manifest$//' >> "$fpipe"; }
 export -f GetInstalledModsToList
 
 RestartApp()
 {
     PID=`pgrep 'yad'`;
     if [[ "" !=  "$PID" ]]; then kill -9 $PID > /dev/null; fi
-    bash "$main_folder_path/App.yad";
+    bash -c "$main_folder_path/App.yad";
 }
 export -f RestartApp
 
 SaveNewGamePath()
 {
-    rm -rf "$config_folder_path/GamePath.txt";
-    touch "$config_folder_path/GamePath.txt";
-    echo $selected_game_path >> $config_folder_path/GamePath.txt; 
+    rm -rf "$configs_folder_path/GamePath.txt";
+    touch "$configs_folder_path/GamePath.txt";
+    echo $selected_game_path >> $configs_folder_path/GamePath.txt; 
 }
 export -f SaveNewGamePath
 
 # Temp
 
-CleanTempFolder()
-{
-    rm -rf "$temp_folder_path"/* > /dev/null;
-}
+CleanTempFolder() { rm -rf "$temp_folder_path"/* > /dev/null; }
 export -f CleanTempFolder
 
-CreateTempFile()
-{
-    cd $temp_folder_path;
-    temp_file_path=$(touch tmp);
-    cd $main_folder_path;
-}
+CreateTempFile() { temp_file_path=$(touch $temp_folder_path/tmp); }
 export -f CreateTempFile
 
 # Decompression
@@ -190,7 +175,7 @@ UnzipFile()
         exit 1; 
     }
 
-    cd $temp_folder_path && 7z x -y "$selected_mod_path" > /dev/null;
+    cd $temp_folder_path && 7z x -y "$selected_mod_path" > /dev/null && cd $main_folder_path;
 }
 export -f UnzipFile
 
@@ -204,16 +189,13 @@ UnrarFile()
         exit 1; 
     }
 
-    cd $temp_folder_path && unrar x -o+ $selected_mod_path > /dev/null;
+    cd $temp_folder_path &&unrar x -o+ "$selected_mod_path" > /dev/null $main_folder_path;
 }
 export -f UnrarFile
 
 # Checks
 
-CheckDependencies()
-{
-    command -v yad > /dev/null 2>&1 || { >&2 echo "Error, YAD is required for this application to run"; exit 1; }
-}
+CheckDependencies() { command -v yad > /dev/null 2>&1 || { >&2 echo "Error, YAD is required for this application to run"; exit 1; } }
 export -f CheckDependencies
 
 CheckFolderAndFiles()
@@ -236,19 +218,24 @@ CheckFolderAndFiles()
 
     # Config
 
-    if ! [ -d "$config_folder_path" ]; then mkdir "$config_folder_path"; fi
-    cd $config_folder_path;
-    config_folder_path=${PWD};
+    if ! [ -d "$configs_folder_path" ]; then mkdir "$configs_folder_path"; fi
+    cd $configs_folder_path;
+    configs_folder_path=${PWD};
     cd $main_folder_path;
+
+    clear;
+    echo "Initializing app"
+    echo "Main folder is at "$main_folder_path"";
+    echo "Mods folder is at "$mods_folder_path"";
+    echo "Temp folder is at "$temp_folder_path"";
+    echo "Configs folder is at "$configs_folder_path"";
 }
 export -f CheckFolderAndFiles
 
 CheckConfigs()
 {
-    cd $config_folder_path;
-    if [ -f "$config_folder_path/GamePath.txt" ]; then selected_game_path=$(cat "$config_folder_path/GamePath.txt")
+    if [ -f "$configs_folder_path/GamePath.txt" ]; then selected_game_path=$(cat "$configs_folder_path/GamePath.txt")
     else SaveNewGamePath; fi
-    cd $main_folder_path;
 }
 export -f CheckConfigs
 
@@ -256,7 +243,7 @@ export -f CheckConfigs
 
 CreateYesNoDialog()
 {
-    yad --text-align="center" --fixed --center --window-icon="$app_icon" \
+    yad --text-align="center" --fixed --center --window-icon="$app_icon" --on-top \
     --title="$yn_title" \
     --text="$yn_description" \
     --buttons-layout="center" \
@@ -267,7 +254,7 @@ export -f CreateYesNoDialog
 
 CreateErrorDialog()
 {
-    yad --text-align="center" --fixed --center --window-icon="$app_icon" \
+    yad --text-align="center" --fixed --center --window-icon="$app_icon" --on-top \
     --title="Error" \
     --text="$error_description" \
     --buttons-layout="center" \
