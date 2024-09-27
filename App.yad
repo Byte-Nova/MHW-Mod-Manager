@@ -1,0 +1,309 @@
+#! /bin/bash
+
+# Yad
+export fpipe=$(mktemp -u --tmpdir find.XXXXXXXX)
+export fkey=$RANDOM
+
+# Paths
+export selected_game_path='~/.local/share/Steam/steamapps/common/Monster Hunter World'
+export selected_mod_path=''
+export selected_mod_name=''
+
+# Folders
+export main_folder_path=''
+export mods_folder_path='./Mods'
+export temp_folder_path='./Temp'
+export config_folder_path='./Config'
+
+# Icons
+export app_icon='./Icons/icon_app.png'
+export folder_icon='./Icons/icon_folder.png'
+export install_icon='./Icons/icon_install.png'
+export yes_icon='./Icons/icon_yes.png'
+export no_icon='./Icons/icon_no.png'
+export reload_icon='./Icons/icon_reload.png'
+export path_icon='./Icons/icon_path.png'
+
+# Rest
+export manage_button_command='yad --file --directory --on-top'
+
+# Yes/No dialog
+export yn_title=""
+export yn_description=""
+export yn_yes_action=""
+export yn_no_action=""
+
+# Error dialog
+export error_description=""
+export error_action=""
+
+# Buttons
+
+InstallButtonCommand()
+{
+    selected_mod_path=$(yad --file --file-filter "Compressed files | *.rar *.zip *.7z" --on-top --title="Select mod file to install" --window-icon="$app_icon");
+    if [ -f "$selected_mod_path" ]; then ShowInstallConfirmation; fi
+}
+export -f InstallButtonCommand
+
+PathButtonCommand()
+{
+    selected_game_path=$(yad --file --directory --on-top --title="Select game path" --window-icon="$app_icon");
+    if ! [ -z "${selected_game_path}" ]; then
+        SaveNewGamePath;
+        RestartApp;
+    fi
+}
+export -f PathButtonCommand
+
+# Actions
+
+ShowInstallConfirmation()
+{   
+    selected_mod_name=$(basename ${selected_mod_path// /-})
+
+    yn_title="Confirmation";
+    yn_description="Are you sure you want to install '$selected_mod_name'?";
+    yn_yes_action="bash -c CheckForModInstallMethod";
+    yn_no_action="";
+    bash -c "CreateYesNoDialog";
+}
+export -f ShowInstallConfirmation
+
+ShowRemoveConfirmation()
+{
+    cd $temp_folder_path;
+    selected_mod_name=`cat "tmp"`;
+    cd $main_folder_path;
+
+    yn_title="Confirmation";
+    yn_description="Are you sure you want to remove '$selected_mod_name'?";
+    yn_yes_action="bash -c RemoveMod;";
+    yn_no_action="";
+    bash -c "CreateYesNoDialog";
+}
+export -f ShowRemoveConfirmation
+
+InstallMod()
+{
+    # Copy files from temp into actual folder
+    cp -r "$temp_folder_path"/* "$selected_game_path" > /dev/null;
+
+    # Cleanup
+    CleanTempFolder;
+    RestartApp;
+}
+export -f InstallMod
+
+RemoveMod()
+{
+    # Remove each of the files from the manifest file
+    for file in `cat $mods_folder_path/$selected_mod_name.manifest`; do rm -f "$selected_game_path/$file"; done
+
+    # Remove manifest file itself
+    rm -f $mods_folder_path/$selected_mod_name.manifest;
+
+    # Clean all empty files after removal
+    find $selected_game_path/nativePC -type d -empty -delete;
+
+    # Cleanup
+    CleanTempFolder;
+    RestartApp;
+}
+export -f RemoveMod
+
+CheckForModInstallMethod()
+{
+    # Check for rar
+    if [ "${selected_mod_path: -4}" == ".rar" ]; then CleanTempFolder && UnrarFile && WriteManifest && InstallMod; fi
+
+    # Check for zip
+    if [ "${selected_mod_path: -4}" == ".zip" ]; then CleanTempFolder && UnzipFile && WriteManifest && InstallMod; fi
+
+    # Check for 7z
+    if [ "${selected_mod_path: -3}" == ".7z" ]; then CleanTempFolder && UnzipFile && WriteManifest && InstallMod; fi
+}
+export -f CheckForModInstallMethod
+
+WriteManifest()
+{
+    # Remove previous file if it already existed
+    rm -f "$mods_folder_path/$selected_mod_name.manifest";
+
+    # Write all files to install into manifest
+    find $temp_folder_path -type f -printf "%P\n" >> "$mods_folder_path/$selected_mod_name.manifest";
+
+    # Reload mod list to display new one
+    GetInstalledModsToList;
+}
+export -f WriteManifest
+
+GetInstalledModsToList()
+{
+    cd $mods_folder_path
+    eval ls -1 $mods_folder_path | sed -e 's/\.manifest$//' >> "$fpipe"
+    cd $main_folder_path;
+}
+export -f GetInstalledModsToList
+
+RestartApp()
+{
+    PID=`pgrep 'yad'`;
+    if [[ "" !=  "$PID" ]]; then kill -9 $PID > /dev/null; fi
+    bash "$main_folder_path/App.yad";
+}
+export -f RestartApp
+
+SaveNewGamePath()
+{
+    rm -rf "$config_folder_path/GamePath.txt";
+    touch "$config_folder_path/GamePath.txt";
+    echo $selected_game_path >> $config_folder_path/GamePath.txt; 
+}
+export -f SaveNewGamePath
+
+# Temp
+
+CleanTempFolder()
+{
+    rm -rf "$temp_folder_path"/* > /dev/null;
+}
+export -f CleanTempFolder
+
+CreateTempFile()
+{
+    cd $temp_folder_path;
+    temp_file_path=$(touch tmp);
+    cd $main_folder_path;
+}
+export -f CreateTempFile
+
+# Decompression
+
+UnzipFile()
+{
+    command -v 7z > /dev/null 2>&1 || 
+    { 
+        >&2 error_description="7z is required for this type of file to be used" &&
+        error_action="bash -c RestartApp" &&
+        CreateErrorDialog;
+        exit 1; 
+    }
+
+    cd $temp_folder_path && 7z x -y "$selected_mod_path" > /dev/null;
+}
+export -f UnzipFile
+
+UnrarFile()
+{
+    command -v unrar > /dev/null 2>&1 || 
+    { 
+        >&2 error_description="unrar is required for this type of file to be used" &&
+        error_action="bash -c RestartApp" &&
+        CreateErrorDialog;
+        exit 1; 
+    }
+
+    cd $temp_folder_path && unrar x -o+ $selected_mod_path > /dev/null;
+}
+export -f UnrarFile
+
+# Checks
+
+CheckDependencies()
+{
+    command -v yad > /dev/null 2>&1 || { >&2 echo "Error, YAD is required for this application to run"; exit 1; }
+}
+export -f CheckDependencies
+
+CheckFolderAndFiles()
+{
+    main_folder_path=${PWD}
+
+    # Mods
+
+    if ! [ -d "$mods_folder_path" ]; then mkdir "$mods_folder_path"; fi
+    cd $mods_folder_path;
+    mods_folder_path=${PWD};
+    cd $main_folder_path;
+
+    # Temp
+
+    if ! [ -d "$temp_folder_path" ]; then mkdir "$temp_folder_path"; fi
+    cd $temp_folder_path;
+    temp_folder_path=${PWD};
+    cd $main_folder_path;
+
+    # Config
+
+    if ! [ -d "$config_folder_path" ]; then mkdir "$config_folder_path"; fi
+    cd $config_folder_path;
+    config_folder_path=${PWD};
+    cd $main_folder_path;
+}
+export -f CheckFolderAndFiles
+
+CheckConfigs()
+{
+    cd $config_folder_path;
+    if [ -f "$config_folder_path/GamePath.txt" ]; then selected_game_path=$(cat "$config_folder_path/GamePath.txt")
+    else SaveNewGamePath; fi
+    cd $main_folder_path;
+}
+export -f CheckConfigs
+
+# Dialogs
+
+CreateYesNoDialog()
+{
+    yad --text-align="center" --fixed --center --window-icon="$app_icon" \
+    --title="$yn_title" \
+    --text="$yn_description" \
+    --buttons-layout="center" \
+    --button="Yes!$yes_icon!":"$yn_yes_action" \
+    --button="No!$no_icon!":"$yn_no_action";
+}
+export -f CreateYesNoDialog
+
+CreateErrorDialog()
+{
+    yad --text-align="center" --fixed --center --window-icon="$app_icon" \
+    --title="Error" \
+    --text="$error_description" \
+    --buttons-layout="center" \
+    --button="OK!$yes_icon!":"$error_action";
+}
+export -f CreateErrorDialog
+
+# Main
+
+ExecuteAppWindow()
+{
+    exec 3<> $fpipe
+
+    yad --plug="$fkey" --tabnum=1 --date-format="%Y-%m-%d" --form \
+        --field="Game install path:" "$selected_game_path" \
+        --field="Change Path!$path_icon!:btn" "bash -c PathButtonCommand" &
+
+    yad --plug="$fkey" --tabnum=2 --list --no-markup \
+        --text "Installed mods:" \
+        --search-column=1 --expand-column=1 \
+        --column="Name" \
+        --dclick-action="bash -c ShowRemoveConfirmation" \
+        --select-action="bash -c \"printf \%\s'\n' %s >Temp/tmp\"" \
+        <&3 &
+
+    yad --paned --key="$fkey" --fixed --center --title="MHW Mod Manager" --window-icon="$app_icon" --width=700 --height=500 \
+        --buttons-layout="center" \
+        --button="Install Mod!$install_icon!":"bash -c InstallButtonCommand" \
+        --button="Reload!$reload_icon!":"bash -c RestartApp"
+        
+    # Cleanup
+    trap "rm -f $fpipe" EXIT
+}
+
+CheckDependencies
+CheckFolderAndFiles
+CheckConfigs
+GetInstalledModsToList
+ExecuteAppWindow
