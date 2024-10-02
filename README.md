@@ -4,8 +4,9 @@
 **What is it?**
 - A very simple and intuitive GUI application that allows ``Linux`` users to manage mods for ``Monster Hunter World``.
 
-**Things to know before using it?**
-- This app relies on ``yad`` to run correctly, since it's the extension used for the GUI to be displayed. Most of the times it can just be installed from the console using most of the package managers available per distro.
+**Dependencies**
+- ``yad`` - GUI.
+- ``7z or unrar`` - Decompression.
 
 **How does it work?**
 - Call ``App.yad`` as an executable from your terminal.
